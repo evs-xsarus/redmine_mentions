@@ -1,10 +1,17 @@
 module RedmineMentions
-  module JournalPatch
-    def self.included(base)
-      base.class_eval do
-        after_create :send_mail
-        
+  module Patches
+    module JournalPatch
+      def self.included(base) # :nodoc:
+        base.send(:include, InstanceMethods)
+
+        base.class_eval do
+          after_create :send_mail
+        end
+      end
+
+      module InstanceMethods
         def send_mail
+          MentionsLogger.try(:error, "gelukt")
           if self.journalized.is_a?(Issue) && self.notes.present?
             issue = self.journalized
             project=self.journalized.project
@@ -24,4 +31,8 @@ module RedmineMentions
       end
     end
   end
+end
+
+unless Journal.included_modules.include?(RedmineMentions::Patches::JournalPatch)
+  Journal.send(:include, RedmineMentions::Patches::JournalPatch)
 end
